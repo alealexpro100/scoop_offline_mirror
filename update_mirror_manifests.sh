@@ -3,6 +3,8 @@
 set -e
 
 [[ -f ./config.conf ]] || exit 1
+#shellcheck disable=SC1091
+source ./config.conf
 
 if [[ ! -d $online_manifests_dir ]]; then
     echo "Directory '$online_manifests_dir' not found!"
@@ -13,7 +15,7 @@ for dir in $mirror_manifests_dir $files_dir; do
     [[ -d $dir ]] || mkdir -p "$dir"
 done
 
-declare manifest_file app_name app_version app_version_old url i=$((0)) sync_text=""
+declare manifest_file app_name app_version app_version_old url i sync_text=""
 
 while read -r manifest_file; do
     manifest="$(<"$online_manifests_dir/$manifest_file")"
@@ -26,6 +28,7 @@ while read -r manifest_file; do
         app_version_old=0
     fi
     sync_text+="mkdir -p '$files_dir/$app_name/$app_version'\n"
+    i=$((0))
     while read -r url; do
         : $((i++))
         if [[ $url =~ \#\/([0-9a-zA-Z.]+)$ ]]; then

@@ -3,6 +3,8 @@
 set -e
 
 [[ -f ./config.conf ]] || exit 1
+#shellcheck disable=SC1091
+source ./config.conf
 
 for dir in $online_manifests_dir $bucket_dir; do
     [[ -d $dir ]] || mkdir -p "$dir"
