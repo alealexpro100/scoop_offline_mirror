@@ -8,6 +8,7 @@ mirror_sync
 ## About
 
 Scripts for creating local scoop mirror of chosen manifests. It downloads needed binaries and edits manifests to make it working.
+WARNING: It does NOT resolve dependencies.
 
 ## Usage
 
