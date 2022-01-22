@@ -2,26 +2,7 @@
 
 set -e
 
-online_manifests_dir="online_manifests"
-bucket_dir="buckets"
-repos="https://github.com/ScoopInstaller/Main.git $bucket_dir/main
-https://github.com/ScoopInstaller/Extras.git $bucket_dir/extras
-https://github.com/ScoopInstaller/Java.git $bucket_dir/java
-https://github.com/alealexpro100/ru-school-scoop.git $bucket_dir/ru-school-scoop"
-
-manifests="extras/bucket/audacity.json
-extras/bucket/blender.json
-extras/bucket/codeblocks-mingw.json
-extras/bucket/firefox.json
-extras/bucket/gimp.json
-extras/bucket/idea.json
-extras/bucket/inkscape.json
-extras/bucket/lazarus.json
-extras/bucket/libreoffice-stable.json
-extras/bucket/notepadplusplus.json
-java/bucket/oraclejre8.json
-extras/bucket/pycharm.json
-extras/bucket/scratch.json"
+[[ -f ./config.conf ]] || exit 1
 
 for dir in $online_manifests_dir $bucket_dir; do
     [[ -d $dir ]] || mkdir -p "$dir"

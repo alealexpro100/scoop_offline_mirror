@@ -2,13 +2,7 @@
 
 set -e
 
-online_manifests_dir="online_manifests"
-mirror_manifests_dir="offline_manifests"
-use_git="1"
-files_dir="offline_manifests"
-mirror_prefix="http://boot.alexpro100.cyou/scoop/files"
-files_dir="./files"
-sync_file="$files_dir/../sync.sh"
+[[ -f ./config.conf ]] || exit 1
 
 if [[ ! -d $online_manifests_dir ]]; then
     echo "Directory '$online_manifests_dir' not found!"
@@ -37,7 +31,7 @@ while read -r manifest_file; do
         if [[ $url =~ \#\/([0-9a-zA-Z.]+)$ ]]; then
             sync_text+="wget -O '$files_dir/$app_name/$app_version/${i}_${BASH_REMATCH[1]}' -c '$(<<<"$url" sed -e "s|\#\/||;s|${BASH_REMATCH[1]}||")'\n"
         else
-            [[ $url =~ \/([0-9a-zA-Z.\-]+)$ ]] && sync_text+="wget -O '$files_dir/$app_name/$app_version/${i}_${BASH_REMATCH[1]}' -c '${url}'\n"
+            [[ $url =~ \/([0-9a-zA-Z.\_\-]+)$ ]] && sync_text+="wget -O '$files_dir/$app_name/$app_version/${i}_${BASH_REMATCH[1]}' -c '${url}'\n"
         fi
         manifest="${manifest//$url/$mirror_prefix/$app_name/$app_version/${i}_${BASH_REMATCH[1]}}"
     done <<< "$(<<< "$manifest" \
@@ -64,5 +58,5 @@ if [[ $use_git == "1" ]]; then
     cd "$mirror_manifests_dir"
     [[ -d .git ]] || git init
     git add \*
-    git commit -m "Updated on \"$(date)\"."
+    git commit -m "Updated on \"$(date)\"." || :
 fi

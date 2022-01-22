@@ -3,3 +3,4 @@ offline_manifests
 online_manifests
 buckets
 sync.sh
+config.conf
