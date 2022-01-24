@@ -11,7 +11,9 @@ if [[ ! -d $online_manifests_dir ]]; then
     exit 1
 fi
 
-for dir in $mirror_manifests_dir $files_dir; do
+bucket_dir="$mirror_manifests_dir/bucket"
+
+for dir in $bucket_dir $files_dir; do
     [[ -d $dir ]] || mkdir -p "$dir"
 done
 
@@ -57,8 +59,8 @@ while read -r manifest_file; do
     #shellcheck disable=SC2001
     app_name="$(<<<"$manifest_file" sed -e 's|.\w\+$||')"
     app_version="$(jq --raw-output '.version' <<< "$manifest")"
-    if [[ -f "$mirror_manifests_dir/$app_name.json" ]]; then
-        app_version_old="$(jq --raw-output '.version' < "$mirror_manifests_dir/$app_name.json")"
+    if [[ -f "$bucket_dir/$app_name.json" ]]; then
+        app_version_old="$(jq --raw-output '.version' < "$bucket_dir/$app_name.json")"
     else
         app_version_old=0
     fi
@@ -91,7 +93,7 @@ while read -r manifest_file; do
             echo "Creating manifest for $app_name..."
         fi
         #shellcheck disable=SC2001
-        <<<"$manifest" sed -e 's|\n|\r\n|g' > "$mirror_manifests_dir/$app_name.json"
+        <<<"$manifest" sed -e 's|\n|\r\n|g' > "$bucket_dir/$app_name.json"
     else
         echo "Keeping manifest for $app_name..."
     fi

@@ -6,7 +6,7 @@ set -e
 #shellcheck disable=SC1091
 source ./config.conf
 
-for dir in $online_manifests_dir $bucket_dir; do
+for dir in $online_manifests_dir $repos_dir; do
     [[ -d $dir ]] || mkdir -p "$dir"
 done
 
@@ -29,6 +29,6 @@ while IFS= read -r repo_name; do
 done <<<"$repos"
 
 while IFS= read -r manifest; do
-    cmp -s -- "$bucket_dir/$manifest" "$online_manifests_dir/$(basename "$manifest")" \
-        || cp "$bucket_dir/$manifest" "$online_manifests_dir/$(basename "$manifest")"
+    cmp -s -- "$repos_dir/$manifest" "$online_manifests_dir/$(basename "$manifest")" \
+        || cp "$repos_dir/$manifest" "$online_manifests_dir/$(basename "$manifest")"
 done <<<"$manifests"
