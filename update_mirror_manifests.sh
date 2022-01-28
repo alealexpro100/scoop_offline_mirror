@@ -6,18 +6,13 @@ set -e
 #shellcheck disable=SC1091
 source ./config.conf
 
-if [[ ! -d $online_manifests_dir ]]; then
-    echo "Directory '$online_manifests_dir' not found!"
-    exit 1
-fi
-
 bucket_dir="$mirror_manifests_dir/bucket"
 
-for dir in $bucket_dir $files_dir; do
+for dir in $repos_dir $bucket_dir $files_dir; do
     [[ -d $dir ]] || mkdir -p "$dir"
 done
 
-declare manifest_file app_name app_version app_version_old url local_url local_file i sync_text="" hashsums=()
+declare manifest_file manifest_name app_version app_version_old url local_url local_file i sync_text="" hashsums=() repo_name line
 
 #shellcheck disable=SC2016
 sync_text+='#!/bin/bash
@@ -54,17 +49,36 @@ function down_check() {
 
 '
 
-while read -r manifest_file; do
-    manifest="$(<"$online_manifests_dir/$manifest_file")"
+#Picked from 'mirror_sync' project
+function git_update() {
+    IFS=" " read -r -a repo_name <<< "$*"
+    repo="${repo_name[0]}"
+    name="${repo_name[1]}"
+    echo " [Git update $name to $name...]"
+    if [[ -d "$name/.git" ]]; then
+        git -C "$name" pull origin --rebase || echo "Failed to update $name!"
+    else
+        mkdir -p "$name"
+        git clone "$repo" "$name" || echo "Failed to create $name!"
+    fi
+}
+
+while IFS= read -r repo_name; do
+    git_update "$repo_name"
+done <<<"$repos"
+
+while read -r -a line; do
+    manifest_file="${line[0]}"
+    manifest_name="${line[1]}"
+    manifest="$(<"$repos_dir/$manifest_file")"
     #shellcheck disable=SC2001
-    app_name="$(<<<"$manifest_file" sed -e 's|.\w\+$||')"
     app_version="$(jq --raw-output '.version' <<< "$manifest")"
-    if [[ -f "$bucket_dir/$app_name.json" ]]; then
-        app_version_old="$(jq --raw-output '.version' < "$bucket_dir/$app_name.json")"
+    if [[ -f "$bucket_dir/$manifest_name.json" ]]; then
+        app_version_old="$(jq --raw-output '.version' < "$bucket_dir/$manifest_name.json")"
     else
         app_version_old=0
     fi
-    sync_text+="mkdir -p '$files_dir/$app_name/$app_version'\n"
+    sync_text+="mkdir -p '$files_dir/$manifest_name/$app_version'\n"
     # Take list of hashes to array hashsums.
     hashsums=()
     while read -r hash; do
@@ -75,9 +89,9 @@ while read -r manifest_file; do
     # Get urls with hashes from array hashsums and add them to sync_text variable. In if block we detect how to save file: with its original name or name from manifest.
     while read -r url; do
         if [[ $url =~ \#\/([0-9a-zA-Z.]+)$ ]]; then
-            local_file="$app_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="$(<<<"$url" sed -e "s|\#\/||;s|${BASH_REMATCH[1]}||")" name_file=${BASH_REMATCH[1]}
+            local_file="$manifest_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="$(<<<"$url" sed -e "s|\#\/||;s|${BASH_REMATCH[1]}||")" name_file=${BASH_REMATCH[1]}
         else
-            [[ $url =~ \/([0-9a-zA-Z.\_\-]+)$ ]] && local_file="$app_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="${url}"
+            [[ $url =~ \/([0-9a-zA-Z.\_\-]+)$ ]] && local_file="$manifest_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="${url}"
         fi
         sync_text+="down_check '${hashsums[i]}' '$files_dir/$local_file' '$local_url'\n"
         manifest="${manifest//$url/$mirror_prefix/$local_file#/$name_file}"
@@ -87,17 +101,17 @@ while read -r manifest_file; do
     # Match versions.
     if [[ $app_version != "$app_version_old" ]]; then
         if [[ $app_version_old != "0" ]]; then
-            echo "Updating manifest for $app_name..."
-            sync_text+="rm -rf '$files_dir/$app_name/$app_version_old'\n"
+            echo "Updating manifest for $manifest_name..."
+            sync_text+="rm -rf '$files_dir/$manifest_name/$app_version_old'\n"
         else
-            echo "Creating manifest for $app_name..."
+            echo "Creating manifest for $manifest_name..."
         fi
         #shellcheck disable=SC2001
-        <<<"$manifest" sed -e 's|\n|\r\n|g' > "$bucket_dir/$app_name.json"
+        <<<"$manifest" sed -e 's|\n|\r\n|g' > "$bucket_dir/$manifest_name.json"
     else
-        echo "Keeping manifest for $app_name..."
+        echo "Keeping manifest for $manifest_name..."
     fi
-done <<< "$(find $online_manifests_dir/ | sed -e 's|^\(\w\+\)/||;/^$/d')"
+done <<< "$manifests"
 
 echo -ne "$sync_text" > "$sync_file"
 chmod +x "$sync_file"

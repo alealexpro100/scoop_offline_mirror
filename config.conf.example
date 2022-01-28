@@ -16,6 +16,6 @@ https://github.com/ScoopInstaller/Extras.git $repos_dir/extras
 https://github.com/ScoopInstaller/Java.git $repos_dir/java"
 
 # Manifests used to make local scoop mirror.
-manifests="extras/bucket/audacity.json
-extras/bucket/blender.json
-java/bucket/oraclejre8.json"
+manifests="extras/bucket/audacity.json audacity
+extras/bucket/blender.json blender
+java/bucket/oraclejre8.json oraclejre8"
