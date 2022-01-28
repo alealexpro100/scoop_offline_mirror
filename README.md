@@ -3,11 +3,11 @@ mirror_sync
 
 ## Dependencies
 
-`bash jq sed` and (if used) `git`.
+`bash jq sed md5sum sha256sum sha1sum sha512sum` and (if used) `git`.
 
 ## About
 
-Scripts for creating local scoop mirror of chosen manifests. It downloads needed binaries and edits manifests to make it working.
+Scripts for creating local scoop mirror of chosen manifests. It downloads needed binaries and edits manifests to make it working. Works only with `*.json` files.
 
 ### What it does
 
@@ -20,6 +20,5 @@ Scripts for creating local scoop mirror of chosen manifests. It downloads needed
 * If there any download by installer, it won't be mirrored. It is about packages like `cygwin`.
 ## Usage
 
-* First of all, you need to copy `config.conf.example` to `config.conf` and edit it.
-* Run `update_online_manifests.sh`. It will sync repositories from internet and place chosen manifests to `online_manifests` directory.
+* Copy `config.conf.example` to `config.conf` and edit it.
 * Run `update_mirror_manifests.sh`. It will edit chosen manifests and place them into `offline_manifests` directory.
