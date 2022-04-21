@@ -88,13 +88,14 @@ while read -r -a line; do
     i=$((0))
     # Get urls with hashes from array hashsums and add them to sync_text variable. In if block we detect how to save file: with its original name or name from manifest.
     while read -r url; do
-        if [[ $url =~ \#\/([0-9a-zA-Z.]+)$ ]]; then
+        if [[ $url =~ \#\/([0-9a-zA-Z.\-]+)$ ]]; then
             local_file="$manifest_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="$(<<<"$url" sed -e "s|\#\/||;s|${BASH_REMATCH[1]}||")" name_file=${BASH_REMATCH[1]}
+            manifest="${manifest//$url/$mirror_prefix/$local_file#/$name_file}"
         else
             [[ $url =~ \/([0-9a-zA-Z.\_\-]+)$ ]] && local_file="$manifest_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="${url}"
+            manifest="${manifest//$url/$mirror_prefix/$local_file}"
         fi
         sync_text+="down_check '${hashsums[i]}' '$files_dir/$local_file' '$local_url'\n"
-        manifest="${manifest//$url/$mirror_prefix/$local_file#/$name_file}"
         : $((i++))
     done <<< "$(<<< "$manifest" \
         jq --raw-output 'if (.architecture != null) and (.architecture[.architecture | keys[0]].url != null) then .architecture[].url else .url end | if type == "array" then .[] else . end')"
