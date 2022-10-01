@@ -37,8 +37,10 @@ function down_check() {
     if check_hash "$1" "$2"; then
         echo "+++File $2 is correct!"
     else
-        echo "---Incorrect hash of $2! Removing and trying again..."]
-        rm -rf "${2:?}"
+        if [[ -n "$2" ]]; then
+            echo "---Incorrect hash of $2! Removing and trying again..."
+            rm -rf "${2:?}"
+        fi
         if wget -c -O "$2" "$3"; then
             echo "+++Downloaded file $2."
         else
@@ -49,22 +51,15 @@ function down_check() {
 
 '
 
-#Picked from 'mirror_sync' project
-function git_update() {
-    IFS=" " read -r -a repo_name <<< "$*"
+while IFS=" " read -r -a repo_name; do
     repo="${repo_name[0]}"
-    name="${repo_name[1]}"
-    echo " [Git update $name to $name...]"
+    name="$repos_dir/${repo_name[1]}"
     if [[ -d "$name/.git" ]]; then
-        git -C "$name" pull origin --rebase || echo "Failed to update $name!"
+        git -C "$name" pull origin --rebase
     else
         mkdir -p "$name"
-        git clone "$repo" "$name" || echo "Failed to create $name!"
+        git clone "$repo" "$name"
     fi
-}
-
-while IFS= read -r repo_name; do
-    git_update "$repo_name"
 done <<<"$repos"
 
 while read -r -a line; do
@@ -72,11 +67,10 @@ while read -r -a line; do
     manifest_name="${line[1]}"
     manifest="$(<"$repos_dir/$manifest_file")"
     #shellcheck disable=SC2001
-    app_version="$(jq --raw-output '.version' <<< "$manifest")"
+    app_version="$(yq --raw-output '.version' <<< "$manifest")"
+    app_version_old=0
     if [[ -f "$bucket_dir/$manifest_name.json" ]]; then
-        app_version_old="$(jq --raw-output '.version' < "$bucket_dir/$manifest_name.json")"
-    else
-        app_version_old=0
+        app_version_old="$(yq --raw-output '.version' < "$bucket_dir/$manifest_name.json")"
     fi
     sync_text+="mkdir -p '$files_dir/$manifest_name/$app_version'\n"
     # Take list of hashes to array hashsums.
@@ -84,12 +78,12 @@ while read -r -a line; do
     while read -r hash; do
         hashsums=("${hashsums[@]}" "$hash")
     done <<< "$(<<< "$manifest" \
-        jq --raw-output 'if (.architecture != null) and (.architecture[.architecture | keys[0]].hash != null) then .architecture[].hash else .hash end | if type == "array" then .[] else . end')"
+        yq --raw-output 'if (.architecture != null) and (.architecture[.architecture | keys[0]].hash != null) then .architecture[].hash else .hash end | if type == "array" then .[] else . end')"
     i=$((0))
     # Get urls with hashes from array hashsums and add them to sync_text variable. In if block we detect how to save file: with its original name or name from manifest.
     while read -r url; do
         if [[ $url =~ \#\/([0-9a-zA-Z.\-]+)$ ]]; then
-            local_file="$manifest_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="$(<<<"$url" sed -e "s|\#\/||;s|${BASH_REMATCH[1]}||")" name_file=${BASH_REMATCH[1]}
+            local_file="$manifest_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="${url//#\/${BASH_REMATCH[1]}/}" name_file=${BASH_REMATCH[1]}
             manifest="${manifest//$url/$mirror_prefix/$local_file#/$name_file}"
         else
             [[ $url =~ \/([0-9a-zA-Z.\_\-]+)$ ]] && local_file="$manifest_name/$app_version/${i}_${BASH_REMATCH[1]}" local_url="${url}"
@@ -98,19 +92,22 @@ while read -r -a line; do
         sync_text+="down_check '${hashsums[i]}' '$files_dir/$local_file' '$local_url'\n"
         : $((i++))
     done <<< "$(<<< "$manifest" \
-        jq --raw-output 'if (.architecture != null) and (.architecture[.architecture | keys[0]].url != null) then .architecture[].url else .url end | if type == "array" then .[] else . end')"
-    # Match versions.
-    if [[ $app_version != "$app_version_old" ]]; then
-        if [[ $app_version_old != "0" ]]; then
-            echo "Updating manifest for $manifest_name..."
-            sync_text+="rm -rf '$files_dir/$manifest_name/$app_version_old'\n"
+        yq --raw-output 'if (.architecture != null) and (.architecture[.architecture | keys[0]].url != null) then .architecture[].url else .url end | if type == "array" then .[] else . end')"
+    # Match manifests.
+    if [[ -f "$bucket_dir/$manifest_name.json" ]]; then
+        if [[ "$manifest" != "$(< "$bucket_dir/$manifest_name.json")" ]]; then
+            if [[ $app_version_old != "0" ]]; then
+                echo "Updating manifest for $manifest_name..."
+                sync_text+="rm -rf '$files_dir/$manifest_name/$app_version_old'\n"
+                echo -n "$manifest" > "$bucket_dir/$manifest_name.json"
+            fi
+            echo -n "$manifest" > "$bucket_dir/$manifest_name.json"
         else
-            echo "Creating manifest for $manifest_name..."
+            echo "Keeping manifest for $manifest_name..."
         fi
-        #shellcheck disable=SC2001
-        <<<"$manifest" sed -e 's|\n|\r\n|g' > "$bucket_dir/$manifest_name.json"
     else
-        echo "Keeping manifest for $manifest_name..."
+        echo "Creating manifest for $manifest_name..."
+        echo -n "$manifest" > "$bucket_dir/$manifest_name.json"
     fi
 done <<< "$manifests"
 
@@ -119,7 +116,7 @@ chmod +x "$sync_file"
 
 if [[ $use_git == "1" ]]; then
     cd "$mirror_manifests_dir"
-    [[ -d .git ]] || git init
+    [[ -d .git ]] || git init -b master
     git add \*
     git commit -m "Updated on \"$(date)\"." || :
 fi

@@ -1,21 +1,24 @@
 
 online_manifests_dir="online_manifests"
-mirror_manifests_dir="offline_manifests"
-files_dir="offline_manifests"
-# Prefix used in manifests.
+# Directory of git repo which will contain edited manifests
+mirror_manifests_dir="../scoop_repo_local"
+mirror_manifests_dir="scoop_repo_local"
+# Prefix used in manifests
 mirror_prefix="http://example.com/scoop/files"
+# Directory with files used in manifests 
 files_dir="./files"
+# Directory with downloaded repos
 repos_dir="buckets"
-# Sync file for downloading binaries.
+# Sync file for downloading binaries
 sync_file="./sync.sh"
-# Use git to make syncable mirror.
+# Use or not git to make syncable mirror
 use_git="1"
-# Buckets, where from manifests are picked.
-repos="https://github.com/ScoopInstaller/Main.git $repos_dir/main
-https://github.com/ScoopInstaller/Extras.git $repos_dir/extras
-https://github.com/ScoopInstaller/Java.git $repos_dir/java"
+# List of repos (buckets), which will be downloaded 
+repos="https://github.com/ScoopInstaller/Main.git main
+https://github.com/ScoopInstaller/Extras.git extras
+https://github.com/ScoopInstaller/Java.git java"
 
-# Manifests used to make local scoop mirror.
+# List of manifests used to make local scoop mirror
 manifests="extras/bucket/audacity.json audacity
 extras/bucket/blender.json blender
 java/bucket/oraclejre8.json oraclejre8"
